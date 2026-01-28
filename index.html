@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BillingPro - Freelancer Payment Automation</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252537;
+            --bg-elevated: #2d2d42;
+            
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1b3;
+            --text-tertiary: #737388;
+            
+            --border: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(99, 102, 241, 0.3);
+            
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+        }
+
+        body {
+            font-family: 'Sora', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .gradient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            animation: float 25s infinite ease-in-out;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--primary), transparent);
+            top: -10%;
+            right: -10%;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--secondary), transparent);
+            bottom: -15%;
+            left: -10%;
+            animation-delay: 5s;
+        }
+
+        .orb-3 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--success), transparent);
+            top: 40%;
+            left: 50%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(50px, -50px) scale(1.1); }
+            66% { transform: translate(-50px, 50px) scale(0.9); }
+        }
+
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: rgba(26, 26, 46, 0.6);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 48px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-menu {
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
+            color: var(--text-primary);
+            border: 1px solid var(--border-hover);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        .user-profile {
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-email {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 32px;
+            min-height: 100vh;
+        }
+
+        .content-header {
+            margin-bottom: 32px;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* Auth Screen */
+        .auth-container {
+            max-width: 500px;
+            margin: 10vh auto;
+            text-align: center;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .auth-card {
+            background: rgba(26, 26, 46, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 48px;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .auth-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto 24px;
+        }
+
+        .auth-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .auth-description {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            line-height: 1.7;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 28px;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-family: 'Sora', sans-serif;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-hover);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(26, 26, 46, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+            animation: cardEntry 0.5s ease-out backwards;
+        }
+
+        @keyframes cardEntry {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-icon {
+            font-size: 24px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Folder Grid */
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+            margin-top: 24px;
+        }
+
+        .folder-card {
+            background: rgba(37, 37, 55, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .folder-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .folder-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-md);
+        }
+
+        .folder-card:hover::before {
+            opacity: 1;
+        }
+
+        .folder-icon-large {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .folder-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .folder-meta {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        /* Form */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: 'Sora', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+
+        .stat-card {
+            background: rgba(37, 37, 55, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Table */
+        .table-container {
+            background: rgba(26, 26, 46, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-top: 24px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table thead {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .data-table th {
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        .data-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .amount {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        /* Loading */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .info-icon {
+            font-size: 20px;
+            color: var(--primary-light);
+        }
+
+        /* Utilities */
+        .hidden {
+            display: none !important;
+        }
+
+        .mb-24 {
+            margin-bottom: 24px;
+        }
+
+        .mt-32 {
+            margin-top: 32px;
+        }
+
+        .text-secondary {
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .folder-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background -->
+    <div class="app-background">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+    <div class="grain-overlay"></div>
+
+    <div class="app-container">
+        <!-- Sidebar (hidden until auth) -->
+        <div id="sidebar" class="sidebar hidden">
+            <div class="logo">
+                <div class="logo-icon">₹</div>
+                <div class="logo-text">BillingPro</div>
+            </div>
+
+            <nav class="nav-menu">
+                <div class="nav-item active" id="nav-freelancers" onclick="showFreelancers()">
+                    <span class="nav-icon">📁</span>
+                    <span>Freelancers</span>
+                </div>
+                <div class="nav-item" id="nav-reports" onclick="showReports()">
+                    <span class="nav-icon">📈</span>
+                    <span>Reports</span>
+                </div>
+                <div class="nav-item" id="nav-settings" onclick="showSettings()">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </div>
+            </nav>
+
+            <div id="user-profile-sidebar" class="user-profile hidden">
+                <img id="sidebar-avatar" class="user-avatar" src="" alt="">
+                <div class="user-info">
+                    <div id="sidebar-name" class="user-name"></div>
+                    <div id="sidebar-email" class="user-email"></div>
+                </div>
+                <button class="logout-btn" onclick="handleSignOut()" title="Sign Out">🚪</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content" class="main-content">
+            <!-- Auth Screen -->
+            <div id="auth-screen" class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-icon">₹</div>
+                    <h1 class="auth-title">Welcome to BillingPro</h1>
+                    <p class="auth-description">
+                        Automate your freelancer billing with intelligent Drive scanning and instant payment calculations.
+                        Sign in to get started.
+                    </p>
+                    <button class="btn btn-primary" onclick="handleSignIn()">
+                        <span>🔐</span>
+                        <span>Sign in with Google</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Container -->
+            <div id="error-container"></div>
+
+            <!-- Reports Section -->
+            <div id="reports" class="hidden">
+                <div class="content-header">
+                    <h1 class="page-title">Reports History</h1>
+                    <p class="page-subtitle">View and download previously generated billing reports</p>
+                </div>
+
+                <div id="reports-container">
+                    <div class="card">
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="font-size: 64px; margin-bottom: 16px;">📊</div>
+                            <h3 style="margin-bottom: 8px;">No Reports Yet</h3>
+                            <p class="text-secondary">Generated reports will appear here for easy access</p>
+                            <button class="btn btn-primary" onclick="showFreelancers()" style="margin-top: 24px;">
+                                <span>📁</span>
+                                <span>Generate Your First Report</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div id="settings" class="hidden">
+                <div class="content-header">
+                    <h1 class="page-title">Settings</h1>
+                    <p class="page-subtitle">Configure your billing preferences</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">💰</span>
+                        <span class="card-title">Default Billing Settings</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Default Rate per Image (₹)</label>
+                        <input type="number" class="form-input" placeholder="50.00" step="0.01" id="default-rate" value="50">
+                        <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">
+                            This rate will be pre-filled when generating new reports
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Currency</label>
+                        <input type="text" class="form-input" value="Indian Rupee (₹)" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Date Format</label>
+                        <select class="form-input">
+                            <option>DD/MM/YYYY (Indian)</option>
+                            <option>MM/DD/YYYY (US)</option>
+                            <option>YYYY-MM-DD (ISO)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveSettings()">
+                        <span>💾</span>
+                        <span>Save Settings</span>
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🔐</span>
+                        <span class="card-title">Account & Privacy</span>
+                    </div>
+                    
+                    <div class="info-box">
+                        <span class="info-icon">ℹ️</span>
+                        <div>
+                            <strong>Signed in as:</strong> 
+                            <span id="settings-email">Loading...</span>
+                        </div>
+                    </div>
+
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                        Your authentication is stored locally on your device. No billing data is stored on any server.
+                    </p>
+
+                    <button class="btn btn-secondary" onclick="handleSignOut()">
+                        <span>🚪</span>
+                        <span>Sign Out</span>
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">ℹ️</span>
+                        <span class="card-title">About BillingPro</span>
+                    </div>
+                    
+                    <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.8;">
+                        <strong>Version:</strong> 1.0.0<br>
+                        <strong>Last Updated:</strong> January 2026<br><br>
+                        BillingPro automates freelancer payment calculations by scanning Google Drive folders and generating detailed billing reports. All processing happens in your browser for maximum privacy and security.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Freelancers Section -->
+            <div id="freelancers" class="hidden">
+                <div class="content-header">
+                    <h1 class="page-title">Freelancers</h1>
+                    <p class="page-subtitle">Select a freelancer to generate billing reports</p>
+                </div>
+
+                <div id="folders-container"></div>
+            </div>
+
+            <!-- Billing Form -->
+            <div id="billing-form" class="hidden">
+                <div class="content-header">
+                    <button class="btn btn-secondary mb-24" onclick="showFreelancers()">
+                        <span>←</span>
+                        <span>Back to Freelancers</span>
+                    </button>
+                    <h1 class="page-title">Configure Billing</h1>
+                    <p class="page-subtitle">Set date range and payment rate</p>
+                </div>
+
+                <div class="card">
+                    <div class="info-box">
+                        <span class="info-icon">📂</span>
+                        <div>
+                            <strong>Selected Freelancer:</strong> 
+                            <span id="selected-freelancer-name"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" id="start-date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Date</label>
+                            <input type="date" id="end-date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Rate per Image (₹)</label>
+                            <input type="number" id="rate" class="form-input" placeholder="50.00" step="0.01">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="scan-btn" onclick="scanFolder()">
+                        <span>🔍</span>
+                        <span>Generate Billing Report</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="hidden">
+                <div class="content-header">
+                    <button class="btn btn-secondary mb-24" onclick="showFreelancers()">
+                        <span>←</span>
+                        <span>Back to Freelancers</span>
+                    </button>
+                    <h1 class="page-title">Billing Summary</h1>
+                    <p class="page-subtitle" id="result-period"></p>
+                </div>
+
+                <div id="stats-container" class="stats-grid"></div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📄</span>
+                        <span class="card-title">Export Report</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="downloadReport()">
+                        <span>📥</span>
+                        <span>Download CSV Report</span>
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table id="results-table" class="data-table"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CLIENT_ID = '335295609098-d70r19db2b9jl3ufrudhveggd8h1id3d.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyDUxMp71UlQRHGAvJnQaV2HjWcgWYf0Uks';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+
+        // State
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let userInfo = null;
+        let folders = [];
+        let selectedFolder = null;
+        let billingData = null;
+
+        // Initialize
+        window.onload = function() {
+            gapi.load('client', initializeGapiClient);
+            initializeGis();
+            checkExistingAuth();
+        };
+
+        async function initializeGapiClient() {
+            try {
+                await gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                console.log('✅ GAPI initialized');
+            } catch (err) {
+                showError('Failed to initialize Google API: ' + err.message);
+            }
+        }
+
+        function initializeGis() {
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (response) => {
+                        if (response.error !== undefined) {
+                            showError('Authentication failed: ' + response.error);
+                            return;
+                        }
+                        saveAuthToken(response);
+                        onAuthSuccess();
+                    },
+                });
+                gisInited = true;
+                console.log('✅ GIS initialized');
+            } catch (err) {
+                showError('Failed to initialize Google Identity: ' + err.message);
+            }
+        }
+
+        // Persistent Authentication
+        function saveAuthToken(token) {
+            localStorage.setItem('billing_auth_token', JSON.stringify({
+                access_token: token.access_token,
+                expires_at: Date.now() + (token.expires_in * 1000)
+            }));
+        }
+
+        function getStoredToken() {
+            const stored = localStorage.getItem('billing_auth_token');
+            if (!stored) return null;
+            
+            const token = JSON.parse(stored);
+            if (Date.now() >= token.expires_at) {
+                localStorage.removeItem('billing_auth_token');
+                return null;
+            }
+            
+            return token.access_token;
+        }
+
+        function checkExistingAuth() {
+            const token = getStoredToken();
+            if (token) {
+                gapi.client.setToken({ access_token: token });
+                onAuthSuccess();
+            }
+        }
+
+        function handleSignIn() {
+            if (!gapiInited || !gisInited) {
+                showError('Google API is still initializing. Please wait and try again.');
+                return;
+            }
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        }
+
+        function handleSignOut() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+            }
+            localStorage.removeItem('billing_auth_token');
+            location.reload();
+        }
+
+        async function onAuthSuccess() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('freelancers').classList.remove('hidden');
+            
+            await loadUserInfo();
+            await loadDriveFolders();
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await gapi.client.request({
+                    path: 'https://www.googleapis.com/oauth2/v2/userinfo',
+                });
+                userInfo = response.result;
+                
+                document.getElementById('sidebar-avatar').src = userInfo.picture;
+                document.getElementById('sidebar-name').textContent = userInfo.name;
+                document.getElementById('sidebar-email').textContent = userInfo.email;
+                document.getElementById('user-profile-sidebar').classList.remove('hidden');
+            } catch (err) {
+                console.error('Error loading user info:', err);
+            }
+        }
+
+        async function loadDriveFolders() {
+            const container = document.getElementById('folders-container');
+            container.innerHTML = '<div class="loading-container"><div class="spinner"></div><p class="loading-text">Loading folders...</p></div>';
+            
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: "mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false",
+                    fields: 'files(id, name, modifiedTime)',
+                    orderBy: 'name',
+                });
+                
+                folders = response.result.files || [];
+                
+                if (folders.length === 0) {
+                    container.innerHTML = `
+                        <div class="card">
+                            <div style="text-align: center; padding: 40px;">
+                                <div style="font-size: 64px; margin-bottom: 16px;">📁</div>
+                                <h3 style="margin-bottom: 8px;">No Folders Found</h3>
+                                <p class="text-secondary">Create freelancer folders in your Google Drive root directory</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = '<div class="folder-grid"></div>';
+                const grid = container.querySelector('.folder-grid');
+                
+                folders.forEach((folder, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'folder-card';
+                    card.style.animationDelay = `${index * 0.05}s`;
+                    card.onclick = () => selectFolder(folder);
+                    card.innerHTML = `
+                        <span class="folder-icon-large">📂</span>
+                        <div class="folder-name">${folder.name}</div>
+                        <div class="folder-meta">ID: ${folder.id.substring(0, 12)}...</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                showError('Failed to load folders: ' + err.message);
+            }
+        }
+
+        function showFreelancers() {
+            hideAllSections();
+            document.getElementById('freelancers').classList.remove('hidden');
+            updateActiveNav('nav-freelancers');
+            clearError();
+        }
+
+        function showReports() {
+            hideAllSections();
+            document.getElementById('reports').classList.remove('hidden');
+            updateActiveNav('nav-reports');
+            clearError();
+        }
+
+        function showSettings() {
+            hideAllSections();
+            document.getElementById('settings').classList.remove('hidden');
+            updateActiveNav('nav-settings');
+            if (userInfo) {
+                document.getElementById('settings-email').textContent = userInfo.email;
+            }
+            clearError();
+        }
+
+        function hideAllSections() {
+            document.getElementById('freelancers').classList.add('hidden');
+            document.getElementById('reports').classList.add('hidden');
+            document.getElementById('settings').classList.add('hidden');
+            document.getElementById('billing-form').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+        }
+
+        function updateActiveNav(activeId) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.getElementById(activeId).classList.add('active');
+        }
+
+        function saveSettings() {
+            const defaultRate = document.getElementById('default-rate').value;
+            if (defaultRate) {
+                localStorage.setItem('billing_default_rate', defaultRate);
+                showSuccess('Settings saved successfully!');
+            }
+        }
+
+        function selectFolder(folder) {
+            selectedFolder = folder;
+            hideAllSections();
+            document.getElementById('billing-form').classList.remove('hidden');
+            document.getElementById('selected-freelancer-name').textContent = folder.name;
+            
+            // Pre-fill default rate if set
+            const defaultRate = localStorage.getItem('billing_default_rate');
+            if (defaultRate) {
+                document.getElementById('rate').value = defaultRate;
+            }
+            
+            clearError();
+        }
+
+        function parseFolderDate(folderName) {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const currentYear = new Date().getFullYear();
+            
+            const match1 = folderName.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
+            if (match1) {
+                const day = parseInt(match1[1]);
+                const month = monthNames.findIndex(m => m.toLowerCase() === match1[2].toLowerCase());
+                return new Date(currentYear, month, day);
+            }
+            
+            const match2 = folderName.match(/(\d{4})-(\d{2})-(\d{2})/);
+            if (match2) {
+                return new Date(folderName);
+            }
+            
+            return null;
+        }
+
+        async function scanFolder() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const rate = document.getElementById('rate').value;
+            
+            if (!startDate || !endDate || !rate) {
+                showError('Please fill in all fields');
+                return;
+            }
+            
+            const btn = document.getElementById('scan-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></span><span>Scanning...</span>';
+            clearError();
+            
+            try {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                
+                const response = await gapi.client.drive.files.list({
+                    q: `'${selectedFolder.id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+                    fields: 'files(id, name)',
+                });
+                
+                const dateFolders = response.result.files || [];
+                const dailyData = [];
+                let totalImages = 0;
+                
+                for (const folder of dateFolders) {
+                    const folderDate = parseFolderDate(folder.name);
+                    
+                    if (folderDate && folderDate >= start && folderDate <= end) {
+                        const imagesResponse = await gapi.client.drive.files.list({
+                            q: `'${folder.id}' in parents and (mimeType contains 'image/' or name contains '.png' or name contains '.jpg' or name contains '.jpeg' or name contains '.gif' or name contains '.webp') and trashed=false`,
+                            fields: 'files(id, name)',
+                        });
+                        
+                        const images = imagesResponse.result.files || [];
+                        const imageCount = images.length;
+                        totalImages += imageCount;
+                        
+                        dailyData.push({
+                            date: folderDate.toLocaleDateString('en-IN', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                            }),
+                            folderName: folder.name,
+                            imageCount: imageCount,
+                            payment: imageCount * parseFloat(rate),
+                        });
+                    }
+                }
+                
+                dailyData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                billingData = {
+                    freelancerName: selectedFolder.name,
+                    startDate: start.toLocaleDateString('en-IN'),
+                    endDate: end.toLocaleDateString('en-IN'),
+                    dailyData,
+                    totalImages,
+                    totalPayment: totalImages * parseFloat(rate),
+                    ratePerImage: parseFloat(rate),
+                };
+                
+                showResults();
+                
+            } catch (err) {
+                showError('Error scanning folder: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🔍</span><span>Generate Billing Report</span>';
+            }
+        }
+
+        function showResults() {
+            hideAllSections();
+            document.getElementById('results').classList.remove('hidden');
+            
+            document.getElementById('result-period').textContent = 
+                `${billingData.freelancerName} • ${billingData.startDate} - ${billingData.endDate}`;
+            
+            const statsContainer = document.getElementById('stats-container');
+            statsContainer.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value">${billingData.totalImages}</div>
+                    <div class="stat-label">Total Images</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-value">₹${billingData.ratePerImage}</div>
+                    <div class="stat-label">Rate per Image</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💳</div>
+                    <div class="stat-value">₹${billingData.totalPayment.toFixed(2)}</div>
+                    <div class="stat-label">Total Payment</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-value">${billingData.dailyData.length}</div>
+                    <div class="stat-label">Working Days</div>
+                </div>
+            `;
+            
+            const table = document.getElementById('results-table');
+            let tableHTML = `
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Folder Name</th>
+                        <th>Images</th>
+                        <th>Payment</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            billingData.dailyData.forEach(day => {
+                tableHTML += `
+                    <tr>
+                        <td>${day.date}</td>
+                        <td>${day.folderName}</td>
+                        <td>${day.imageCount}</td>
+                        <td class="amount">₹${day.payment.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody>';
+            table.innerHTML = tableHTML;
+            
+            showSuccess('Report generated successfully!');
+        }
+
+        function downloadReport() {
+            if (!billingData) return;
+            
+            const csvContent = [
+                ['BillingPro - Freelancer Payment Report'],
+                ['Freelancer Name:', billingData.freelancerName],
+                ['Period:', `${billingData.startDate} to ${billingData.endDate}`],
+                ['Rate per Image:', `₹${billingData.ratePerImage}`],
+                [''],
+                ['Date', 'Folder Name', 'Images Uploaded', 'Payment (INR)'],
+                ...billingData.dailyData.map(day => [
+                    day.date,
+                    day.folderName,
+                    day.imageCount,
+                    day.payment.toFixed(2)
+                ]),
+                [''],
+                ['Total Images:', billingData.totalImages],
+                ['Total Payment:', `₹${billingData.totalPayment.toFixed(2)}`],
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `BillingPro_${billingData.freelancerName}_${Date.now()}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            showSuccess('Report downloaded successfully!');
+        }
+
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `
+                <div class="alert alert-error">
+                    <span>❌</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            setTimeout(() => clearError(), 8000);
+        }
+
+        function showSuccess(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `
+                <div class="alert alert-success">
+                    <span>✅</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            setTimeout(() => clearError(), 5000);
+        }
+
+        function clearError() {
+            document.getElementById('error-container').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

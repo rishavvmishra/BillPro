@@ -515,6 +515,75 @@
             font-family: 'IBM Plex Mono', monospace;
         }
 
+        /* Search Bar */
+        .search-bar {
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 48px 14px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: 'Sora', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+
+        /* Breadcrumb Navigation */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            flex-wrap: wrap;
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .breadcrumb-item:hover {
+            color: var(--primary);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--text-primary);
+            cursor: default;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
         /* Form */
         .form-grid {
             display: grid;
@@ -945,6 +1014,18 @@
                     <p class="page-subtitle">Select a freelancer to generate billing reports</p>
                 </div>
 
+                <div class="search-bar">
+                    <input type="text" class="search-input" id="folder-search" placeholder="Search folders...">
+                    <span class="search-icon">🔍</span>
+                </div>
+
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-item active" onclick="navigateToRoot()">
+                        <span>🏠</span>
+                        <span>My Drive</span>
+                    </span>
+                </div>
+
                 <div id="folders-container"></div>
             </div>
 
@@ -1034,6 +1115,8 @@
         let gisInited = false;
         let userInfo = null;
         let folders = [];
+        let currentFolderId = 'root';
+        let folderHistory = [];
         let selectedFolder = null;
         let billingData = null;
 
@@ -1080,10 +1163,14 @@
 
         // Persistent Authentication
         function saveAuthToken(token) {
+            // Store token with extended expiration (3600 seconds = 1 hour from Google)
+            // We'll extend the local check to give users more time before re-auth
             localStorage.setItem('billing_auth_token', JSON.stringify({
                 access_token: token.access_token,
-                expires_at: Date.now() + (token.expires_in * 1000)
+                expires_at: Date.now() + (token.expires_in * 1000),
+                created_at: Date.now()
             }));
+            localStorage.setItem('billing_user_session', 'active'); // Session marker
         }
 
         function getStoredToken() {
@@ -1091,8 +1178,17 @@
             if (!stored) return null;
             
             const token = JSON.parse(stored);
+            
+            // Check if token is expired
             if (Date.now() >= token.expires_at) {
+                // Token expired, but check if user was recently active (within 7 days)
+                const sessionActive = localStorage.getItem('billing_user_session');
+                if (sessionActive === 'active' && token.created_at && (Date.now() - token.created_at < 7 * 24 * 60 * 60 * 1000)) {
+                    // User session still valid, request new token silently
+                    return 'NEEDS_REFRESH';
+                }
                 localStorage.removeItem('billing_auth_token');
+                localStorage.removeItem('billing_user_session');
                 return null;
             }
             
@@ -1101,7 +1197,12 @@
 
         function checkExistingAuth() {
             const token = getStoredToken();
-            if (token) {
+            if (token === 'NEEDS_REFRESH') {
+                // Try to get a new token silently (without prompt)
+                if (gapiInited && gisInited) {
+                    tokenClient.requestAccessToken({ prompt: '' }); // Empty prompt for silent refresh
+                }
+            } else if (token) {
                 gapi.client.setToken({ access_token: token });
                 onAuthSuccess();
             }
@@ -1112,7 +1213,10 @@
                 showError('Google API is still initializing. Please wait and try again.');
                 return;
             }
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            // Use 'consent' only on first login, then '' for silent refresh
+            const hasSession = localStorage.getItem('billing_user_session');
+            const promptType = hasSession === 'active' ? '' : 'consent';
+            tokenClient.requestAccessToken({ prompt: promptType });
         }
 
         function handleSignOut() {
@@ -1122,6 +1226,7 @@
                 gapi.client.setToken('');
             }
             localStorage.removeItem('billing_auth_token');
+            localStorage.removeItem('billing_user_session');
             location.reload();
         }
 
@@ -1150,13 +1255,13 @@
             }
         }
 
-        async function loadDriveFolders() {
+        async function loadDriveFolders(folderId = 'root') {
             const container = document.getElementById('folders-container');
             container.innerHTML = '<div class="loading-container"><div class="spinner"></div><p class="loading-text">Loading folders...</p></div>';
             
             try {
                 const response = await gapi.client.drive.files.list({
-                    q: "mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false",
+                    q: `mimeType='application/vnd.google-apps.folder' and '${folderId}' in parents and trashed=false`,
                     fields: 'files(id, name, modifiedTime)',
                     orderBy: 'name',
                 });
@@ -1169,31 +1274,103 @@
                             <div style="text-align: center; padding: 40px;">
                                 <div style="font-size: 64px; margin-bottom: 16px;">📁</div>
                                 <h3 style="margin-bottom: 8px;">No Folders Found</h3>
-                                <p class="text-secondary">Create freelancer folders in your Google Drive root directory</p>
+                                <p class="text-secondary">This folder is empty or contains no subfolders</p>
                             </div>
                         </div>
                     `;
                     return;
                 }
                 
-                container.innerHTML = '<div class="folder-grid"></div>';
-                const grid = container.querySelector('.folder-grid');
-                
-                folders.forEach((folder, index) => {
-                    const card = document.createElement('div');
-                    card.className = 'folder-card';
-                    card.style.animationDelay = `${index * 0.05}s`;
-                    card.onclick = () => selectFolder(folder);
-                    card.innerHTML = `
-                        <span class="folder-icon-large">📂</span>
-                        <div class="folder-name">${folder.name}</div>
-                        <div class="folder-meta">ID: ${folder.id.substring(0, 12)}...</div>
-                    `;
-                    grid.appendChild(card);
-                });
+                displayFolders(folders);
             } catch (err) {
                 showError('Failed to load folders: ' + err.message);
             }
+        }
+
+        function displayFolders(foldersToDisplay) {
+            const container = document.getElementById('folders-container');
+            container.innerHTML = '<div class="folder-grid"></div>';
+            const grid = container.querySelector('.folder-grid');
+            
+            foldersToDisplay.forEach((folder, index) => {
+                const card = document.createElement('div');
+                card.className = 'folder-card';
+                card.style.animationDelay = `${index * 0.05}s`;
+                
+                // Double-click to browse into folder, single click to select
+                card.ondblclick = (e) => {
+                    e.stopPropagation();
+                    browseIntoFolder(folder);
+                };
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    selectFolder(folder);
+                };
+                
+                card.innerHTML = `
+                    <span class="folder-icon-large">📂</span>
+                    <div class="folder-name">${folder.name}</div>
+                    <div class="folder-meta">Double-click to browse</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function browseIntoFolder(folder) {
+            folderHistory.push({ id: currentFolderId, name: currentFolderId === 'root' ? 'My Drive' : currentFolderId });
+            currentFolderId = folder.id;
+            updateBreadcrumb(folder.name);
+            loadDriveFolders(folder.id);
+        }
+
+        function navigateToRoot() {
+            currentFolderId = 'root';
+            folderHistory = [];
+            updateBreadcrumb();
+            loadDriveFolders('root');
+        }
+
+        function navigateBack() {
+            if (folderHistory.length > 0) {
+                const previous = folderHistory.pop();
+                currentFolderId = previous.id;
+                updateBreadcrumb();
+                loadDriveFolders(currentFolderId);
+            }
+        }
+
+        function updateBreadcrumb(currentFolderName = null) {
+            const breadcrumb = document.getElementById('breadcrumb');
+            let breadcrumbHTML = `
+                <span class="breadcrumb-item ${folderHistory.length === 0 && !currentFolderName ? 'active' : ''}" onclick="navigateToRoot()">
+                    <span>🏠</span>
+                    <span>My Drive</span>
+                </span>
+            `;
+            
+            if (folderHistory.length > 0 || currentFolderName) {
+                breadcrumbHTML += '<span class="breadcrumb-separator">›</span>';
+            }
+            
+            if (currentFolderName) {
+                breadcrumbHTML += `
+                    <span class="breadcrumb-item active">
+                        <span>📁</span>
+                        <span>${currentFolderName}</span>
+                    </span>
+                `;
+            }
+            
+            if (folderHistory.length > 0 && !currentFolderName) {
+                breadcrumbHTML += `
+                    <span class="breadcrumb-item" onclick="navigateBack()">
+                        <span>←</span>
+                        <span>Back</span>
+                    </span>
+                `;
+            }
+            
+            breadcrumb.innerHTML = breadcrumbHTML;
         }
 
         function showFreelancers() {
@@ -1473,6 +1650,20 @@
         function clearError() {
             document.getElementById('error-container').innerHTML = '';
         }
+
+        // Search functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('folder-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const filteredFolders = folders.filter(folder => 
+                        folder.name.toLowerCase().includes(searchTerm)
+                    );
+                    displayFolders(filteredFolders);
+                });
+            }
+        });
     </script>
 </body>
 </html>
